@@ -305,6 +305,7 @@ class MineDojoSim(gym.Env):
             handlers.StartingHealthAgentStart(health=start_health),
             handlers.StartingFoodAgentStart(food=start_food),
         ]
+        # agent_start_handlers += self.human_control_task.create_agent_start()
         self.initial_inventory = initial_inventory
         if initial_inventory is not None:
             initial_inventory = [
