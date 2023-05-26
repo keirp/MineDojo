@@ -532,4 +532,4 @@ def make(task_id: str, *args, cam_interval: int | float = 15, **kwargs):
         env_obj = _meta_task_make(task_id, *args, **kwargs)
     else:
         raise ValueError(f"Invalid task id provided {task_id}")
-    return ARNNWrapper(env_obj, cam_interval=cam_interval)
+    return env_obj

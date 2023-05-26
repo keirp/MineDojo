@@ -294,7 +294,7 @@ class ExtraSpawnMetaTaskBase(MetaTaskBase):
                 axis=0,
             )
             self._extra_spawn_range_space = gym.spaces.Box(
-                low=low, high=high, seed=kwargs["seed"]
+                low=low, high=high
             )
             self._rng = np.random.default_rng(seed=kwargs["seed"])
 
@@ -324,7 +324,7 @@ class ExtraSpawnMetaTaskBase(MetaTaskBase):
                 axis=0,
             )
             self._mob_spawn_range_space = gym.spaces.Box(
-                low=low, high=high, seed=kwargs["seed"]
+                low=low, high=high
             )
 
     def step(self, action):

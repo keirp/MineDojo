@@ -42,7 +42,7 @@ setup(
     packages=find_packages(include=f"{PKG_NAME}.*"),
     include_package_data=True,
     zip_safe=False,
-    install_requires=_read_install_requires(),
+    # install_requires=_read_install_requires(),
     extras_require=_fill_extras(EXTRAS),
     python_requires=">=3.9",
     classifiers=[

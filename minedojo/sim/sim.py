@@ -14,6 +14,17 @@ from .cmd_executor import CMDExecutor
 from .config_sim_spec import SimSpec
 from .inventory import InventoryItem, parse_inventory_item
 
+from minerl.herobraine.env_specs.human_survival_specs import HumanSurvival
+from minerl.herobraine.wrapper import EnvWrapper
+
+ENV_KWARGS = dict(
+    fov_range=[70, 70],
+    frameskip=1,
+    gamma_range=[2, 2],
+    guiscale_range=[1, 1],
+    resolution=[640, 360],
+    cursor_size_range=[16.0, 16.0],
+)
 
 class MineDojoSim(gym.Env):
     """An environment wrapper for MineDojo simulation.
@@ -157,6 +168,7 @@ class MineDojoSim(gym.Env):
         sim_name: str = "MineDojoSim",
         raise_error_on_invalid_cmds: bool = False,
     ):
+        self.human_control_task = HumanSurvival(**ENV_KWARGS)
         self._sim_name = sim_name
         self._rng = np.random.default_rng(seed)
         if isinstance(image_size, int):
@@ -389,11 +401,11 @@ class MineDojoSim(gym.Env):
 
     @property
     def observation_space(self):
-        return self._sim_spec.observation_space
+        return self.human_control_task.observation_space
 
     @property
     def action_space(self):
-        return self._sim_spec.action_space
+        return self.human_control_task.action_space
 
     @property
     def new_seed(self):
@@ -646,18 +658,56 @@ class MineDojoSim(gym.Env):
     def is_terminated(self):
         return self._bridge_env.is_terminated
 
+    # def _process_raw_obs(self, raw_obs: dict):
+    #     info = deepcopy(raw_obs)
+    #     if "pov" in info:
+    #         info.pop("pov")
+    #     obs_dict = {
+    #         h.to_string(): h.from_hero(raw_obs) for h in self._sim_spec.observables
+    #     }
+    #     return obs_dict, info
+
+    # def _action_obj_to_xml(self, action):
+    #     parsed_action = [f'chat {action["chat"]}'] if "chat" in action else []
+    #     parsed_action.extend(
+    #         [h.to_hero(action[h.to_string()]) for h in self._sim_spec.actionables]
+    #     )
+    #     return "\n".join(parsed_action)
+
     def _process_raw_obs(self, raw_obs: dict):
         info = deepcopy(raw_obs)
         if "pov" in info:
             info.pop("pov")
+
         obs_dict = {
             h.to_string(): h.from_hero(raw_obs) for h in self._sim_spec.observables
         }
-        return obs_dict, info
 
+        # For only the 'pov' observation, we process with the MineRL wrapper.
+        bottom_env_spec = self.human_control_task
+        while isinstance(bottom_env_spec, EnvWrapper):
+            bottom_env_spec = bottom_env_spec.env_to_wrap
+
+        pov_specs = [h for h in bottom_env_spec.observables if h.to_string() == 'pov']
+        assert len(pov_specs) > 0, "No 'pov' observation found in the bottom env spec."
+        for h in pov_specs:
+            obs_dict[h.to_string()] = h.from_hero(raw_obs)
+
+        return obs_dict, info
+    
     def _action_obj_to_xml(self, action):
-        parsed_action = [f'chat {action["chat"]}'] if "chat" in action else []
-        parsed_action.extend(
-            [h.to_hero(action[h.to_string()]) for h in self._sim_spec.actionables]
-        )
-        return "\n".join(parsed_action)
+        action = deepcopy(action)
+
+        if isinstance(self.human_control_task, EnvWrapper):
+            action = self.human_control_task.unwrap_action(action)
+
+        bottom_env_spec = self.human_control_task
+        while isinstance(bottom_env_spec, EnvWrapper):
+            bottom_env_spec = bottom_env_spec.env_to_wrap
+
+        action_str = []
+        for h in bottom_env_spec.actionables:
+            if h.to_string() in action:
+                action_str.append(h.to_hero(action[h.to_string()]))
+
+        return "\n".join(action_str)
